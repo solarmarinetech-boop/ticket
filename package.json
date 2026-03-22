@@ -1,0 +1,17 @@
+{
+  "name": "navdesk",
+  "version": "2.0.0",
+  "description": "NavDesk — морской Service Desk с Telegram ботом",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-telegram-bot-api": "^0.64.0",
+    "node-fetch": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NavDesk — Service Desk</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Code+Pro:wght@400;600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ocean-deep: #0a1628;
+    --ocean-mid: #0d2444;
+    --ocean-surface: #0f3460;
+    --wave: #1a5276;
+    --foam: #c8e6f0;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --red-flag: #c0392b;
+    --amber: #e67e22;
+    --green-buoy: #1a7a4a;
+    --text-primary: #e8f4f8;
+    --text-muted: #7fb3c8;
+    --border: rgba(200, 230, 240, 0.12);
+    --card-bg: rgba(13, 36, 68, 0.85);
+    --priority-critical: #c0392b;
+    --priority-high: #e67e22;
+    --priority-medium: #2980b9;
+    --priority-low: #1a7a4a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: var(--ocean-deep);
+    color: var(--text-primary);
+    font-family: 'Libre Baskerville', Georgia, serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated ocean background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(26, 82, 118, 0.3) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(15, 52, 96, 0.4) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 80%, rgba(10, 22, 40, 0.8) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Wave pattern */
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 200px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 200'%3E%3Cpath fill='%230a1628' fill-opacity='0.6' d='M0,100 C360,180 720,20 1080,100 C1260,140 1350,80 1440,100 L1440,200 L0,200 Z'/%3E%3Cpath fill='%230d2444' fill-opacity='0.4' d='M0,130 C300,70 600,160 900,120 C1100,95 1270,150 1440,130 L1440,200 L0,200 Z'/%3E%3C/svg%3E") no-repeat bottom;
+    background-size: cover;
+    pointer-events: none;
+    z-index: 0;
+    animation: waveShift 8s ease-in-out infinite alternate;
+  }
+
+  @keyframes waveShift {
+    from { transform: translateX(-20px); }
+    to { transform: translateX(20px); }
+  }
+
+  /* Floating particles (bubbles) */
+  .bubbles {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .bubble {
+    position: absolute;
+    bottom: -20px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(200, 230, 240, 0.3), rgba(200, 230, 240, 0.05));
+    border: 1px solid rgba(200, 230, 240, 0.15);
+    animation: rise linear infinite;
+  }
+
+  @keyframes rise {
+    to { transform: translateY(-110vh) translateX(var(--drift)); opacity: 0; }
+  }
+
+  /* ── Layout ── */
+  .app {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, rgba(10,22,40,0.95) 0%, rgba(13,36,68,0.9) 100%);
+    border-bottom: 1px solid var(--gold);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 70px;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5), 0 1px 0 rgba(201,168,76,0.3);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-anchor {
+    font-size: 28px;
+    filter: drop-shadow(0 0 8px rgba(201,168,76,0.6));
+    animation: sway 4s ease-in-out infinite;
+  }
+
+  @keyframes sway {
+    0%, 100% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
+  }
+
+  .logo-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(201,168,76,0.4);
+  }
+
+  .logo-sub {
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-family: 'Source Code Pro', monospace;
+    margin-top: 2px;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 32px;
+    align-items: center;
+  }
+
+  .stat-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .stat-num {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--gold-light);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  .stat-divider {
+    width: 1px;
+    height: 36px;
+    background: var(--border);
+  }
+
+  .header-clock {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 14px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+  }
+
+  /* ── Main Grid ── */
+  .main {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 0;
+    height: calc(100vh - 70px);
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: rgba(10, 22, 40, 0.7);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sidebar-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+
+  .filter-tabs {
+    display: flex;
+    gap: 4px;
+  }
+
+  .filter-tab {
+    padding: 4px 10px;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .filter-tab.active, .filter-tab:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(201,168,76,0.08);
+  }
+
+  .tickets-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .tickets-list::-webkit-scrollbar { width: 4px; }
+  .tickets-list::-webkit-scrollbar-track { background: transparent; }
+  .tickets-list::-webkit-scrollbar-thumb { background: var(--wave); border-radius: 2px; }
+
+  /* ── Ticket Card ── */
+  .ticket-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--priority-medium);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ticket-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .ticket-card:hover {
+    border-color: rgba(200,230,240,0.3);
+    background: rgba(26,82,118,0.3);
+    transform: translateX(3px);
+  }
+
+  .ticket-card.active {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.08);
+    box-shadow: 0 0 20px rgba(201,168,76,0.1);
+  }
+
+  .ticket-card.priority-critical { border-left-color: var(--priority-critical); }
+  .ticket-card.priority-high { border-left-color: var(--priority-high); }
+  .ticket-card.priority-medium { border-left-color: var(--priority-medium); }
+  .ticket-card.priority-low { border-left-color: var(--priority-low); }
+
+  .ticket-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .ticket-id {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  .priority-badge {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 9px;
+    padding: 2px 7px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+  }
+
+  .priority-badge.critical { color: var(--priority-critical); }
+  .priority-badge.high { color: var(--priority-high); }
+  .priority-badge.medium { color: var(--priority-medium); }
+  .priority-badge.low { color: var(--priority-low); }
+
+  .ticket-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    line-height: 1.3;
+  }
+
+  .ticket-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .ticket-from {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .ticket-time {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .new-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 6px var(--gold);
+    animation: pulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.8); }
+  }
+
+  /* ── Detail Panel ── */
+  .detail-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: rgba(13, 36, 68, 0.4);
+  }
+
+  .detail-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: var(--text-muted);
+  }
+
+  .detail-empty .compass {
+    font-size: 64px;
+    opacity: 0.3;
+    animation: spin 20s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .detail-empty p {
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: 'Source Code Pro', monospace;
+    opacity: 0.5;
+  }
+
+  .detail-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .detail-content::-webkit-scrollbar { width: 4px; }
+  .detail-content::-webkit-scrollbar-track { background: transparent; }
+  .detail-content::-webkit-scrollbar-thumb { background: var(--wave); border-radius: 2px; }
+
+  /* Detail Header */
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-id-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .detail-id {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+  }
+
+  .detail-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.3;
+    max-width: 600px;
+  }
+
+  .detail-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .btn {
+    padding: 9px 20px;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--gold);
+    color: var(--ocean-deep);
+    border-color: var(--gold);
+    font-weight: 600;
+  }
+
+  .btn-primary:hover {
+    background: var(--gold-light);
+    box-shadow: 0 0 15px rgba(201,168,76,0.4);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: var(--border);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+  }
+
+  /* Info Grid */
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .info-cell {
+    background: rgba(10,22,40,0.6);
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    position: relative;
+  }
+
+  .info-cell-label {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .info-cell-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  /* Two column content */
+  .content-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .section-box {
+    background: rgba(10,22,40,0.5);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .section-box.full-width {
+    grid-column: 1 / -1;
+  }
+
+  .section-box-header {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(201,168,76,0.06);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-box-title {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+
+  .section-box-body {
+    padding: 16px 18px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text-primary);
+  }
+
+  /* Raw message box */
+  .raw-message {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--foam);
+    opacity: 0.8;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* Todo list */
+  .todo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .todo-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .todo-checkbox {
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--gold);
+    flex-shrink: 0;
+    margin-top: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .todo-checkbox.done {
+    background: var(--gold);
+    color: var(--ocean-deep);
+    font-size: 10px;
+  }
+
+  .todo-text.done {
+    text-decoration: line-through;
+    opacity: 0.5;
+  }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border: 1px solid;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .status-new { border-color: var(--gold); color: var(--gold); }
+  .status-processing { border-color: var(--amber); color: var(--amber); }
+  .status-done { border-color: var(--green-buoy); color: var(--green-buoy); }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* Telegram badge */
+  .tg-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    background: rgba(41, 182, 246, 0.1);
+    border: 1px solid rgba(41, 182, 246, 0.3);
+    font-family: 'Source Code Pro', monospace;
+    font-size: 10px;
+    color: #64b5f6;
+    letter-spacing: 1px;
+  }
+
+  /* New ticket form */
+  .new-ticket-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,22,40,0.85);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .new-ticket-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    background: var(--ocean-mid);
+    border: 1px solid var(--gold);
+    width: 600px;
+    max-width: 90vw;
+    box-shadow: 0 0 60px rgba(201,168,76,0.15), 0 40px 100px rgba(0,0,0,0.6);
+    animation: modalIn 0.3s ease;
+  }
+
+  @keyframes modalIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    color: var(--gold);
+  }
+
+  .modal-close {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .modal-close:hover {
+    border-color: var(--red-flag);
+    color: var(--red-flag);
+  }
+
+  .modal-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-label {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  .form-input, .form-textarea, .form-select {
+    background: rgba(10,22,40,0.8);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  .form-input:focus, .form-textarea:focus, .form-select:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 10px rgba(201,168,76,0.1);
+  }
+
+  .form-textarea {
+    min-height: 120px;
+    resize: vertical;
+    line-height: 1.6;
+  }
+
+  .form-select option {
+    background: var(--ocean-mid);
+  }
+
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .processing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+
+  .processing-dots span {
+    animation: blink 1.4s infinite;
+    display: inline-block;
+  }
+  .processing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .processing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0; }
+    40% { opacity: 1; }
+  }
+
+  .hidden { display: none !important; }
+
+  /* Divider rope */
+  .rope-divider {
+    height: 1px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--border) 0px,
+      var(--border) 6px,
+      transparent 6px,
+      transparent 10px
+    );
+    margin: 4px 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- Bubbles -->
+<div class="bubbles" id="bubbles"></div>
+
+<div class="app">
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-anchor">⚓</div>
+      <div>
+        <div class="logo-text">NAVDESK</div>
+        <div class="logo-sub">Командный мостик · Service Desk</div>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill">
+        <div class="stat-num" id="stat-total">0</div>
+        <div class="stat-label">Всего</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-pill">
+        <div class="stat-num" id="stat-new" style="color: var(--gold)">0</div>
+        <div class="stat-label">Новых</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-pill">
+        <div class="stat-num" id="stat-critical" style="color: var(--priority-critical)">0</div>
+        <div class="stat-label">Критичных</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="header-clock" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">⛵ Входящие заявки</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="filter-tab active" onclick="filterTickets('all',this)">Все</button>
+          <button class="filter-tab" onclick="filterTickets('new',this)">Новые</button>
+          <button class="filter-tab" onclick="filterTickets('critical',this)">🚨</button>
+          <button class="btn btn-primary" onclick="openNewTicket()" style="padding:5px 12px;font-size:10px">+ Новая</button>
+        </div>
+      </div>
+      <div class="tickets-list" id="ticketsList"></div>
+    </aside>
+
+    <!-- Detail Panel -->
+    <section class="detail-panel" id="detailPanel">
+      <div class="detail-empty" id="detailEmpty">
+        <div class="compass">🧭</div>
+        <p>Выберите заявку для просмотра</p>
+      </div>
+      <div class="detail-content hidden" id="detailContent"></div>
+    </section>
+  </div>
+</div>
+
+<!-- New Ticket Modal -->
+<div class="new-ticket-overlay" id="newTicketOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📨 Новая заявка (Telegram)</div>
+      <button class="modal-close" onclick="closeNewTicket()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">📱 Telegram username</label>
+        <input class="form-input" id="tgUsername" placeholder="@username" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">💬 Сообщение от пользователя (свободная форма)</label>
+        <textarea class="form-textarea" id="rawMessage" placeholder="Например: привет! у меня не работает VPN уже второй день, не могу подключиться к рабочим серверам, очень срочно нужна помощь"></textarea>
+      </div>
+      <div class="processing-indicator hidden" id="processingIndicator">
+        <span>🤖 Gemini AI обрабатывает заявку</span>
+        <div class="processing-dots"><span>.</span><span>.</span><span>.</span></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeNewTicket()">Отмена</button>
+      <button class="btn btn-primary" id="processBtn" onclick="processTicket()">⚡ Обработать через LLM</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Sample Data ──
+let tickets = [];
+const IS_SERVER = window.location.protocol !== 'file:';
+
+async function apiGet() {
+  const r = await fetch('/api/tickets');
+  return r.json();
+}
+
+async function apiPatch(id, data) {
+  const r = await fetch('/api/tickets/' + id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+  return r.json();
+}
+
+async function apiPost(rawText, username) {
+  const r = await fetch('/api/tickets', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ rawText, username }) });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; t.style.cssText = 'position:fixed;bottom:28px;right:28px;z-index:999;background:var(--ocean-mid);border:1px solid var(--gold);color:var(--text-primary);padding:14px 20px;font-family:Source Code Pro,monospace;font-size:12px;letter-spacing:1px;box-shadow:0 0 30px rgba(201,168,76,0.2);max-width:360px;line-height:1.5;'; document.body.appendChild(t); }
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._timer); t._timer = setTimeout(() => { t.style.display = 'none'; }, 5000);
+}
+
+async function syncTickets() {
+  if (!IS_SERVER) return;
+  try {
+    const fresh = await apiGet();
+    const prevCount = tickets.length;
+    tickets = fresh;
+    if (fresh.length > prevCount && prevCount > 0) showToast('Новая заявка из Telegram: ' + fresh[0].title);
+    renderList();
+    if (activeTicketId) openTicket(activeTicketId);
+  } catch (e) { console.warn('Sync error:', e.message); }
+}
+
+let currentFilter = 'all';
+let activeTicketId = null;
+
+// ── Clock ──
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('ru-RU', { hour12: false });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Bubbles ──
+function createBubbles() {
+  const container = document.getElementById('bubbles');
+  for (let i = 0; i < 15; i++) {
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    const size = 4 + Math.random() * 16;
+    b.style.cssText = `
+      width: ${size}px; height: ${size}px;
+      left: ${Math.random() * 100}%;
+      animation-duration: ${8 + Math.random() * 12}s;
+      animation-delay: ${Math.random() * 8}s;
+      --drift: ${(Math.random() - 0.5) * 80}px;
+    `;
+    container.appendChild(b);
+  }
+}
+createBubbles();
+
+// ── Stats ──
+function updateStats() {
+  document.getElementById('stat-total').textContent = tickets.length;
+  document.getElementById('stat-new').textContent = tickets.filter(t => t.status === 'new').length;
+  document.getElementById('stat-critical').textContent = tickets.filter(t => t.priority === 'critical').length;
+}
+
+// ── Priority label ──
+function priorityLabel(p) {
+  return { critical: 'Критичный', high: 'Высокий', medium: 'Средний', low: 'Низкий' }[p] || p;
+}
+
+// ── Render List ──
+function renderList() {
+  const list = document.getElementById('ticketsList');
+  let filtered = tickets;
+  if (currentFilter === 'new') filtered = tickets.filter(t => t.status === 'new');
+  if (currentFilter === 'critical') filtered = tickets.filter(t => t.priority === 'critical');
+
+  list.innerHTML = filtered.map(t => `
+    <div class="ticket-card priority-${t.priority} ${t.id === activeTicketId ? 'active' : ''}"
+         onclick="openTicket('${t.id}')">
+      <div class="ticket-top">
+        <div>
+          <div class="ticket-id">${t.id}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          ${t.status === 'new' ? '<div class="new-dot"></div>' : ''}
+          <span class="priority-badge ${t.priority}">${priorityLabel(t.priority)}</span>
+        </div>
+      </div>
+      <div class="ticket-title">${t.title}</div>
+      <div class="ticket-meta">
+        <div class="ticket-from">📱 ${t.from} · ${t.department}</div>
+        <div class="ticket-time">${t.time}</div>
+      </div>
+    </div>
+  `).join('<div class="rope-divider"></div>');
+
+  updateStats();
+}
+
+// ── Filter ──
+function filterTickets(type, el) {
+  currentFilter = type;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+// ── Open Ticket ──
+function openTicket(id) {
+  activeTicketId = id;
+  const t = tickets.find(x => x.id === id);
+  if (!t) return;
+  t.status = t.status === 'new' ? 'new' : t.status; // keep status
+
+  document.getElementById('detailEmpty').classList.add('hidden');
+  const content = document.getElementById('detailContent');
+  content.classList.remove('hidden');
+
+  const statusClass = { new: 'status-new', processing: 'status-processing', done: 'status-done' }[t.status];
+  const statusLabel = { new: 'Новая', processing: 'В работе', done: 'Завершена' }[t.status];
+
+  const doneTasks = t.tasks.filter(x => x.done).length;
+
+  content.innerHTML = `
+    <div class="detail-header">
+      <div>
+        <div class="detail-id-row">
+          <span class="detail-id">${t.id}</span>
+          <span class="status-badge ${statusClass}">
+            <span class="status-dot"></span>${statusLabel}
+          </span>
+          <span class="tg-badge">✈ ${t.from}</span>
+          <span class="priority-badge ${t.priority}" style="font-size:10px;padding:2px 9px">${priorityLabel(t.priority)}</span>
+        </div>
+        <div class="detail-title">${t.title}</div>
+        <div style="margin-top:8px;font-size:12px;color:var(--text-muted);font-family:'Source Code Pro',monospace">
+          🏢 ${t.department} &nbsp;·&nbsp; 🕐 ${t.date}, ${t.time}
+        </div>
+      </div>
+      <div class="detail-actions">
+        ${t.status !== 'processing' ? `<button class="btn btn-ghost" onclick="changeStatus('${t.id}','processing')">▶ В работу</button>` : ''}
+        ${t.status !== 'done' ? `<button class="btn btn-primary" onclick="changeStatus('${t.id}','done')">✓ Закрыть</button>` : '<span style="color:var(--green-buoy);font-family:Source Code Pro,monospace;font-size:12px;letter-spacing:1px">✓ ЗАВЕРШЕНА</span>'}
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="info-cell-label">🎯 Приоритет</div>
+        <div class="info-cell-value" style="color:var(--priority-${t.priority})">${priorityLabel(t.priority)}</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-cell-label">👤 Отправитель</div>
+        <div class="info-cell-value">${t.from}</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-cell-label">🏢 Отдел</div>
+        <div class="info-cell-value">${t.department}</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-cell-label">📋 Задачи</div>
+        <div class="info-cell-value">${doneTasks}/${t.tasks.length} выполнено</div>
+      </div>
+    </div>
+
+    <div class="content-cols">
+      <div class="section-box">
+        <div class="section-box-header">
+          <span>🔍</span>
+          <span class="section-box-title">Суть заявки</span>
+        </div>
+        <div class="section-box-body">${t.summary}</div>
+      </div>
+
+      <div class="section-box">
+        <div class="section-box-header">
+          <span>⚙️</span>
+          <span class="section-box-title">Что нужно сделать</span>
+        </div>
+        <div class="section-box-body">
+          <div class="todo-list">
+            ${t.tasks.map((task, i) => `
+              <div class="todo-item">
+                <div class="todo-checkbox ${task.done ? 'done' : ''}" onclick="toggleTask('${t.id}',${i})">
+                  ${task.done ? '✓' : ''}
+                </div>
+                <span class="todo-text ${task.done ? 'done' : ''}">${task.text}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="section-box full-width">
+        <div class="section-box-header">
+          <span>📱</span>
+          <span class="section-box-title">Оригинальное сообщение из Telegram</span>
+        </div>
+        <div class="section-box-body">
+          <div class="raw-message">"${t.rawText}"</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  renderList();
+}
+
+async function changeStatus(id, status) {
+  const t = tickets.find(x => x.id === id);
+  if (!t) return;
+  t.status = status;
+  renderList(); openTicket(id);
+  if (IS_SERVER) await apiPatch(id, { status });
+}
+
+async function toggleTask(ticketId, idx) {
+  const t = tickets.find(x => x.id === ticketId);
+  if (!t) return;
+  t.tasks[idx].done = !t.tasks[idx].done;
+  openTicket(ticketId);
+  if (IS_SERVER) await apiPatch(ticketId, { tasks: t.tasks });
+}
+
+// ── New Ticket Modal ──
+function openNewTicket() {
+  document.getElementById('newTicketOverlay').classList.add('open');
+}
+
+function closeNewTicket() {
+  document.getElementById('newTicketOverlay').classList.remove('open');
+  document.getElementById('tgUsername').value = '';
+  document.getElementById('rawMessage').value = '';
+  document.getElementById('processingIndicator').classList.add('hidden');
+  document.getElementById('processBtn').classList.remove('hidden');
+}
+
+async function processTicket() {
+  const username = document.getElementById('tgUsername').value.trim() || '@unknown_user';
+  const raw = document.getElementById('rawMessage').value.trim();
+  if (!raw) { alert('Введите сообщение от пользователя'); return; }
+  document.getElementById('processBtn').classList.add('hidden');
+  document.getElementById('processingIndicator').classList.remove('hidden');
+  try {
+    let newTicket;
+    if (IS_SERVER) {
+      newTicket = await apiPost(raw, username.startsWith('@') ? username : '@' + username);
+      tickets.unshift(newTicket);
+    } else {
+      const KEY = 'AIzaSyCstoaATSTdFnnShoJpqe-972CBHqH9KvA';
+      const prompt = 'Формализуй IT-заявку и верни ТОЛЬКО JSON без markdown: {"title":"...","summary":"...","priority":"critical|high|medium|low","department":"...","tasks":["..."]}. Заявка: "' + raw + '"';
+      const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + KEY, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.2,maxOutputTokens:1000}}) });
+      const data = await resp.json();
+      const parsed = JSON.parse((data.candidates?.[0]?.content?.parts?.[0]?.text || '{}').replace(/```json|```/g,'').trim());
+      const now = new Date();
+      newTicket = { id:'TKT-'+String(tickets.length+48).padStart(4,'0'), title:parsed.title||'Новая заявка', summary:parsed.summary||raw, priority:parsed.priority||'medium', status:'new', from: username.startsWith('@')?username:'@'+username, department:parsed.department||'Неизвестно', time:now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}), date:'сегодня', rawText:raw, tasks:(parsed.tasks||['Рассмотреть заявку']).map(t=>({text:t,done:false})) };
+      tickets.unshift(newTicket);
+    }
+    closeNewTicket(); renderList(); openTicket(newTicket.id);
+  } catch (err) {
+    console.error(err); closeNewTicket(); alert('Ошибка: ' + err.message);
+  }
+}
+
+// Close overlay on backdrop click
+document.getElementById('newTicketOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeNewTicket();
+});
+
+// ── Init ──
+async function init() {
+  if (IS_SERVER) {
+    await syncTickets();
+    setInterval(syncTickets, 5000);
+  } else {
+    tickets = [
+      { id:'TKT-0047', title:'VPN не подключается третий день', summary:'Пользователь не может подключиться к корпоративному VPN после обновления Windows 11.', priority:'critical', status:'new', from:'@ivan_petrov', department:'Бухгалтерия', time:'09:14', date:'сегодня', rawText:'привет! у меня совсем перестал работать VPN.', tasks:[{text:'Проверить журналы VPN-сервера',done:false},{text:'Откатить обновление KB5034441',done:false}] },
+      { id:'TKT-0046', title:'Нет доступа к SharePoint', summary:'После смены отдела пользователь потерял доступ к SharePoint.', priority:'high', status:'new', from:'@dmitry_fin', department:'Финансы', time:'08:51', date:'сегодня', rawText:'перевели меня в финансы, а доступ к шарепоинту не дали.', tasks:[{text:'Проверить группы AD',done:false},{text:'Добавить в Finance-SharePoint-Read',done:false}] },
+    ];
+    renderList();
+  }
+}
+init();
+</script>
+</body>
+</html>
