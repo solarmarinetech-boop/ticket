@@ -1162,13 +1162,9 @@ async function processTicket() {
       newTicket = await apiPost(raw, username.startsWith('@') ? username : '@' + username);
       tickets.unshift(newTicket);
     } else {
-      const KEY = 'AIzaSyCstoaATSTdFnnShoJpqe-972CBHqH9KvA';
-      const prompt = 'Формализуй IT-заявку и верни ТОЛЬКО JSON без markdown: {"title":"...","summary":"...","priority":"critical|high|medium|low","department":"...","tasks":["..."]}. Заявка: "' + raw + '"';
-      const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + KEY, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.2,maxOutputTokens:1000}}) });
-      const data = await resp.json();
-      const parsed = JSON.parse((data.candidates?.[0]?.content?.parts?.[0]?.text || '{}').replace(/```json|```/g,'').trim());
+      // file:// mode — без LLM, создаём заявку вручную
       const now = new Date();
-      newTicket = { id:'TKT-'+String(tickets.length+48).padStart(4,'0'), title:parsed.title||'Новая заявка', summary:parsed.summary||raw, priority:parsed.priority||'medium', status:'new', from: username.startsWith('@')?username:'@'+username, department:parsed.department||'Неизвестно', time:now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}), date:'сегодня', rawText:raw, tasks:(parsed.tasks||['Рассмотреть заявку']).map(t=>({text:t,done:false})) };
+      newTicket = { id:'TKT-'+String(tickets.length+48).padStart(4,'0'), title: raw.length > 60 ? raw.substring(0,57)+'...' : raw, summary: raw, priority:'medium', status:'new', from: username.startsWith('@')?username:'@'+username, department:'Неизвестно', time:now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}), date:'сегодня', rawText:raw, tasks:[{text:'Рассмотреть заявку вручную', done:false}] };
       tickets.unshift(newTicket);
     }
     closeNewTicket(); renderList(); openTicket(newTicket.id);

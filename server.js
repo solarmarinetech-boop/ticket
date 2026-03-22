@@ -9,9 +9,12 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 // ── Config ──
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || 'YOUR_TELEGRAM_BOT_TOKEN';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyCstoaATSTdFnnShoJpqe-972CBHqH9KvA';
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const PORT = process.env.PORT || 3000;
+
+if (!TELEGRAM_TOKEN) console.warn('⚠️  TELEGRAM_TOKEN not set in environment variables');
+if (!GEMINI_API_KEY) console.warn('⚠️  GEMINI_API_KEY not set in environment variables');
 const DB_FILE = path.join(__dirname, 'tickets.json');
 
 // ── Simple JSON "database" ──
