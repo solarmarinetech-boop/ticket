@@ -41,6 +41,7 @@ function generateId(tickets) {
 
 // ── Grok (xAI) processing ──
 async function processWithGrok(rawText, username) {
+  if (!GROK_API_KEY) throw new Error('GROK_API_KEY is not set in environment variables');
   const prompt = `Ты — система обработки заявок в IT Service Desk. Пользователь написал в Telegram:
 
 "${rawText}"
@@ -84,7 +85,15 @@ async function processWithGrok(rawText, username) {
 // ── Telegram Bot ──
 let bot;
 try {
-  bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+  bot = new TelegramBot(TELEGRAM_TOKEN, {
+    polling: {
+      autoStart: true,
+      params: { timeout: 10 }
+    }
+  });
+
+  // Drop pending updates on start to avoid 409 conflicts
+  bot.deleteWebHook({ drop_pending_updates: true }).catch(() => {});
 
   bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
@@ -143,7 +152,8 @@ try {
       console.log(`[BOT] New ticket ${newTicket.id} from ${username}`);
 
     } catch (err) {
-      console.error('[BOT] Error:', err.message);
+      console.error('[BOT] Error:', err.message || JSON.stringify(err));
+      if (!GROK_API_KEY) console.error('[BOT] GROK_API_KEY is not set!');
       bot.sendMessage(chatId,
         '⚠️ Ошибка при обработке заявки. Попробуй ещё раз или обратись напрямую к администратору.'
       );
